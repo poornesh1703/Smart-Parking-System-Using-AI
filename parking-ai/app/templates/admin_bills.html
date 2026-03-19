@@ -1,0 +1,186 @@
+{% extends 'base.html' %}
+{% block title %}Admin — Bills{% endblock %}
+
+{% block head %}
+<style>
+  /* Filters */
+  .filters.card{ padding:16px }
+  .grid-4{ display:grid; gap:12px; grid-template-columns:repeat(4,1fr) }
+  @media (max-width:980px){ .grid-4{ grid-template-columns:repeat(2,1fr) } }
+  @media (max-width:560px){ .grid-4{ grid-template-columns:1fr } }
+  label{ color:#cbd5e1; font-weight:600; font-size:.9rem; margin-bottom:4px; display:block }
+  input[type="text"], input[type="date"], select{
+    width:100%; background:#0f172a; color:#f1f5f9; border:1px solid rgba(255,255,255,.2);
+    border-radius:12px; padding:.75rem .85rem; outline:none;
+  }
+  input:focus, select:focus{ border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,.35) }
+  .filter-actions{ display:flex; gap:8px; margin-top:10px; align-items:center; flex-wrap:wrap }
+  .btn-secondary{ background:linear-gradient(180deg,#1f2937,#0f172a); border:1px solid var(--border); color:#e5e7eb }
+
+  /* Table card */
+  .card.slab{
+    background:rgba(15,23,42,.85); border:1px solid rgba(255,255,255,.12);
+    border-radius:16px; box-shadow:0 8px 24px rgba(0,0,0,.45); overflow:hidden;
+  }
+  .table{ width:100%; border-collapse:collapse }
+  .table thead th{
+    text-align:left; font-size:.9rem; color:#dbe4ff; letter-spacing:.2px;
+    background:rgba(255,255,255,.05); padding:12px 10px; border-bottom:1px solid var(--border)
+  }
+  .table tbody td{
+    padding:12px 10px; border-bottom:1px solid var(--border); color:#e2e8f0; vertical-align:middle;
+  }
+  .table tbody tr:hover td{ background:rgba(255,255,255,.03) }
+
+  /* Pills & small button */
+  .pill{
+    display:inline-flex; align-items:center; gap:.35rem; padding:.18rem .55rem;
+    border-radius:999px; font-size:.78rem; font-weight:800; border:1px solid rgba(255,255,255,.15)
+  }
+  .pill--ok{ background:rgba(34,197,94,.18); color:#bbf7d0; border-color:rgba(34,197,94,.45) }
+  .pill--no{ background:rgba(239,68,68,.18); color:#fecaca; border-color:rgba(239,68,68,.45) }
+  .btn.btn-sm{ padding:.45rem .6rem; border-radius:10px; font-weight:700 }
+
+  /* Pagination */
+  .pager{
+    display:flex; align-items:center; justify-content:center; gap:10px; padding:12px;
+  }
+  .pager span{ color:#cbd5e1 }
+
+
+  .filters { padding:16px;background: #91a0b57b; border:1px solid rgba(255,255,255,.12);margin-bottom: 16px;
+    border-radius:16px; box-shadow:0 8px 24px rgba(0,0,0,.45); overflow:hidden;}
+  /* filters card */
+</style>
+{% endblock %}
+
+{% block content %}
+<h1><i class="ri-receipt-line" style="color:var(--primary)"></i> Parking Bills</h1>
+
+<form method="get" action="{{ url_for('views.admin_bills') }}" class="filters" autocomplete="off">
+  <div class="grid-4">
+    <div>
+      <label><strong>Car</strong></label>
+      <input type="text" name="car" value="{{ q_car or '' }}" placeholder="KA01AB1234">
+    </div>
+    <div>
+      <label><strong>Lot</strong></label>
+      <select name="lot_id">
+        <option value="">All</option>
+        {% for lot in lots %}
+          <option value="{{ lot.id }}" {% if lot_id==lot.id %}selected{% endif %}>{{ lot.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label><strong>From</strong></label>
+      <input type="date" name="from" value="{{ date_from or '' }}">
+    </div>
+    <div>
+      <label><strong>To</strong></label>
+      <input type="date" name="to" value="{{ date_to or '' }}">
+    </div>
+  </div>
+
+  <div class="filter-actions">
+    <label style="display:inline-flex;align-items:center;gap:.5rem;">
+      <input type="checkbox" name="open" value="1" {% if only_open==1 %}checked{% endif %}> Only unacknowledged
+    </label>
+    <div style="flex:1"></div>
+    <button class="btn" type="submit"><i class="ri-filter-2-line"></i> Filter</button>
+    <a class="btn btn-secondary" href="{{ url_for('views.admin_bills_csv', car=q_car, lot_id=lot_id, open=only_open, from=date_from, to=date_to) }}">
+      <i class="ri-file-download-line"></i> Export CSV
+    </a>
+  </div>
+</form>
+
+<div class="card slab">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Session</th>
+        <th>Car</th>
+        <th>Lot/Slot</th>
+        <th>Start → End</th>
+        <th>Minutes</th>
+        <th>Amount (₹)</th>
+        <th>Ack</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in bills.items %}
+      <tr>
+        <td>#{{ r.id }}</td>
+        <td><code>{{ r.car_number }}</code></td>
+        <td>{{ r.lot_id }} / #{{ r.slot_id }}</td>
+        <td>
+          {{ r.started_at.strftime('%Y-%m-%d %H:%M') if r.started_at else '' }}
+          &nbsp;→&nbsp;
+          {{ r.ended_at.strftime('%Y-%m-%d %H:%M') if r.ended_at else '' }}
+        </td>
+        <td>{{ r.minutes_total or 0 }}</td>
+        <td>{{ r.charge_amount or 0 }}</td>
+        <td>
+          {% if r.acknowledged %}
+            <span class="pill pill--ok"><i class="ri-check-line"></i> yes</span>
+          {% else %}
+            <span class="pill pill--no"><i class="ri-close-line"></i> no</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if not r.acknowledged %}
+          <button class="btn btn-sm" onclick="ack({{ r.id }}, this)">Acknowledge</button>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="8" style="text-align:center; opacity:.7;">No results</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if bills.pages > 1 %}
+    <div class="pager">
+      {% if bills.has_prev %}
+        <a class="btn btn-secondary" href="{{ url_for('views.admin_bills', page=bills.prev_num, car=q_car, lot_id=lot_id, open=only_open, from=date_from, to=date_to) }}">
+          &laquo; Prev
+        </a>
+      {% endif %}
+      <span>Page {{ bills.page }} / {{ bills.pages }}</span>
+      {% if bills.has_next %}
+        <a class="btn btn-secondary" href="{{ url_for('views.admin_bills', page=bills.next_num, car=q_car, lot_id=lot_id, open=only_open, from=date_from, to=date_to) }}">
+          Next &raquo;
+        </a>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
+
+<script>
+async function ack(sessionId, btn){
+  btn.disabled = true;
+  try{
+    const r = await fetch('/api/admin/bills/ack', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({session_id: sessionId})
+    });
+    const data = await r.json();
+    if(!data.ok){
+      alert('Failed: ' + (data.msg || r.status));
+      btn.disabled = false;
+      return;
+    }
+    const td = btn.closest('tr').querySelectorAll('td')[6];
+    td.innerHTML = '<span class="pill pill--ok"><i class="ri-check-line"></i> yes</span>';
+    btn.remove();
+  }catch(e){
+    alert('Network error');
+    btn.disabled = false;
+  }
+}
+</script>
+{% endblock %}

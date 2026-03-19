@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>SmartParkAI — Smart Parking System</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Inter font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <!-- Icons (optional) -->
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" rel="stylesheet">
+  <style>
+    :root { --primary:#2563eb; --primary-dark:#1d4ed8; --bg:#0f172a; --text:#f1f5f9; --muted:#94a3b8; --card:rgba(255,255,255,.05); --radius:14px; --ring:rgba(37,99,235,.35); }
+    *{box-sizing:border-box} html,body{margin:0}
+    body{font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);line-height:1.6}
+
+    /* header */
+    header{padding:3.25rem 1rem 2rem;text-align:center;background:linear-gradient(180deg,rgba(37,99,235,.35),rgba(15,23,42,1))}
+    header h1{font-size:2.4rem;margin:.25rem 0 .5rem;font-weight:700}
+    header p{max-width:780px;margin:0 auto;color:var(--muted);font-size:1.08rem}
+    .buttons{margin-top:2rem;display:flex;justify-content:center;gap:.8rem;flex-wrap:wrap}
+    .btn{background:var(--primary);border:none;color:#fff;padding:1rem 1.4rem;border-radius:12px;font-weight:700;letter-spacing:.2px;cursor:pointer;display:inline-flex;align-items:center;gap:.5rem;text-decoration:none;box-shadow:0 10px 24px rgba(0,0,0,.35);transition:.15s transform,.2s background}
+    .btn:hover{background:var(--primary-dark);transform:translateY(-2px)}
+    .btn i{font-size:1.25rem}
+
+    /* carousel */
+    .carousel-wrap{max-width:1100px;margin:20px auto 0;padding:0 1rem}
+    .carousel{position:relative;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,.08);background:#0b1220}
+    .slides{display:flex;transition:transform .6s cubic-bezier(.2,.8,.2,1)}
+    .slide{min-width:100%;height:360px;position:relative}
+    .slide img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:brightness(.9)}
+    .slide .caption{position:absolute;left:16px;right:16px;bottom:16px;background:linear-gradient(180deg,rgba(2,6,23,.0),rgba(2,6,23,.65));padding:14px;border-radius:12px;border:1px solid rgba(255,255,255,.08)}
+    .caption h3{margin:0 0 4px;font-size:1.05rem}
+    .caption p{margin:0;color:#cbd5e1;font-size:.95rem}
+    .ctrl{position:absolute;top:50%;transform:translateY(-50%);background:rgba(2,6,23,.6);border:1px solid rgba(255,255,255,.15);color:#fff;padding:.55rem .7rem;border-radius:12px;cursor:pointer}
+    .ctrl:hover{background:rgba(2,6,23,.8)}
+    .prev{left:10px} .next{right:10px}
+    .dots{position:absolute;left:0;right:0;bottom:10px;display:flex;gap:6px;justify-content:center}
+    .dot{width:9px;height:9px;border-radius:999px;background:rgba(255,255,255,.35);border:1px solid rgba(255,255,255,.6);cursor:pointer;transition:transform .15s}
+    .dot.active{background:#fff;transform:scale(1.15)}
+    @media (max-width:720px){ .slide{height:260px} }
+
+    /* features & cards */
+    .section{padding:3rem 1rem;max-width:1100px;margin:0 auto}
+    .section h2{text-align:center;font-size:1.9rem;margin:0 0 1.8rem}
+    .grid{display:grid;gap:1.2rem;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+    .card{background:var(--card);padding:1.4rem;border-radius:var(--radius);border:1px solid rgba(255,255,255,.08);transition:.15s transform,.2s box-shadow}
+    .card:hover{transform:translateY(-4px);box-shadow:0 8px 26px rgba(0,0,0,.45)}
+    .card i{font-size:2rem;color:var(--primary)}
+    .card h3{margin:.6rem 0 .3rem;font-size:1.15rem}
+    .card p{color:var(--muted);font-size:.96rem}
+    .em{color:#cfe1ff}
+
+    /* “How it works” steps */
+    .steps .card{display:grid;grid-template-rows:auto 1fr}
+    .step-badge{display:inline-flex;align-items:center;gap:.45rem;background:rgba(37,99,235,.12);border:1px solid rgba(37,99,235,.35);color:#bcd3ff;padding:.3rem .6rem;border-radius:999px;font-size:.8rem;font-weight:700;margin-bottom:.6rem}
+
+    /* footer */
+    footer{text-align:center;padding:1.5rem;color:var(--muted);border-top:1px solid rgba(255,255,255,.08);margin-top:8px}
+
+    /* modal */
+    .modal{position:fixed;inset:0;background:rgba(2,6,23,.65);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;padding:20px;z-index:999}
+    .modal[open]{display:flex}
+    .dialog{width:min(440px,96vw);background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.03));border:1px solid rgba(255,255,255,.1);border-radius:16px;overflow:hidden;box-shadow:0 14px 36px rgba(0,0,0,.55)}
+    .dialog__head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:rgba(37,99,235,.12);border-bottom:1px solid rgba(255,255,255,.08)}
+    .dialog__title{margin:0;font-size:1.15rem;font-weight:800;letter-spacing:.2px}
+    .close{appearance:none;background:transparent;border:0;color:#cfd7ea;font-size:1.4rem;cursor:pointer}
+    .close:hover{color:#fff}
+    .dialog__body{padding:18px 16px 6px}
+    .dialog__foot{padding:14px 16px;display:flex;justify-content:flex-end;gap:8px;border-top:1px solid rgba(255,255,255,.08)}
+    /* form */
+    form.login{display:grid;gap:12px}
+    label{font-weight:600;font-size:.92rem}
+    input[type="email"],input[type="password"]{width:100%;padding:.8rem .9rem;border-radius:12px;background:#101827;border:1px solid rgba(255,255,255,.12);color:#fff;outline:none}
+    input:focus{border-color:#5b8efb;box-shadow:0 0 0 4px var(--ring)}
+    .submit{background:var(--primary);border:0;color:#fff;padding:.9rem 1.1rem;border-radius:12px;font-weight:800;cursor:pointer}
+    .submit:hover{background:var(--primary-dark)}
+    .secondary{background:#1f2937;color:#e5e7eb;border:0}
+    .small{color:var(--muted);font-size:.9rem;margin-top:8px;text-align:center}
+    .small a{color:#93c5fd;text-decoration:none}
+    .small a:hover{text-decoration:underline}
+  </style>
+</head>
+<body>
+
+  <!-- HERO -->
+  <header>
+    <h1><i class="ri-car-fill"></i> SmartParkAI</h1>
+    <p>AI-powered smart parking that makes city parking faster, safer, and more efficient for drivers and administrators.</p>
+    <div class="buttons">
+      <button class="btn" data-open-login data-role="admin"><i class="ri-shield-user-line"></i> Login as Admin</button>
+      <button class="btn" data-open-login data-role="user"><i class="ri-user-line"></i> Login as User</button>
+    </div>
+  </header>
+
+  <!-- CAROUSEL -->
+  <div class="carousel-wrap">
+    <div class="carousel" id="carousel" aria-roledescription="carousel">
+      <div class="slides" id="slides">
+        <div class="slide" data-index="0">
+          <img src="https://img.freepik.com/premium-photo/smart-parking-system-guiding-drivers-available_976492-129479.jpg" alt="Modern multi-storey parking">
+          <div class="caption">
+            <h3>Live Availability</h3>
+            <p>See free, reserved, and occupied slots in real time.</p>
+          </div>
+        </div>
+        <div class="slide" data-index="1">
+          <img src="https://www.hikvision.com/content/dam/hikvision/usa/newsroom/migrate-assets/Gain-Advanced-Vehicle-Access-Control-Security-with-Our-Latest-3rd-Gen-DeepinView-License-Plate-Recognition-Cameras-0.jpg" alt="City parking guidance">
+          <div class="caption">
+            <h3>AI Number Plate Assist</h3>
+            <p>Speedy check-ins with plate recognition and duplicate checks.</p>
+          </div>
+        </div>
+        <div class="slide" data-index="2">
+          <img src="https://advcloudfiles.advantech.com/cms/825eb685-aef1-4e3f-b573-57d074acfd00/Resources%20Case%20Study%20Featured%20Image%20for%20Detail%20Page/Fotolia_237682580_L-(1).jpg" alt="Analytics dashboard">
+          <div class="caption">
+            <h3>Insights & Reports</h3>
+            <p>Utilization, peak hours, revenue—visualized for decisions.</p>
+          </div>
+        </div>
+      </div>
+
+      <button class="ctrl prev" aria-label="Previous slide" id="prev">&#10094;</button>
+      <button class="ctrl next" aria-label="Next slide" id="next">&#10095;</button>
+
+      <div class="dots" id="dots" aria-label="Carousel dots"></div>
+    </div>
+  </div>
+
+  <!-- HIGHLIGHTS -->
+  <section class="section">
+    <h2>Project Highlights</h2>
+    <div class="grid">
+      <div class="card">
+        <i class="ri-timer-line"></i>
+        <h3>Smart Reservations</h3>
+        <p>Hold a slot for <span class="em">15 minutes</span>, cut search time, and reduce congestion.</p>
+      </div>
+      <div class="card">
+        <i class="ri-map-pin-2-line"></i>
+        <h3>Geo-Tagged Lots</h3>
+        <p>Precise lat/long mapping with easy navigation links.</p>
+      </div>
+      <div class="card">
+        <i class="ri-shield-check-line"></i>
+        <h3>Role-Based Access</h3>
+        <p>Unified login form—heading adapts for Admin/User with secure auth.</p>
+      </div>
+      <div class="card">
+        <i class="ri-bar-chart-2-line"></i>
+        <h3>Operational Analytics</h3>
+        <p>Monitor occupancy, overstays, and throughput in one place.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="section steps">
+    <h2>How SmartParkAI Works</h2>
+    <div class="grid">
+      <div class="card">
+        <span class="step-badge"><i class="ri-number-1"></i> Select Lot</span>
+        <h3>Find a Slot</h3>
+        <p>Browse lots and view real-time slot status.</p>
+      </div>
+      <div class="card">
+        <span class="step-badge"><i class="ri-number-2"></i> Reserve / Park</span>
+        <h3>Reserve or Check-in</h3>
+        <p>Reserve for 15m or park instantly. Duplicate plates are flagged.</p>
+      </div>
+      <div class="card">
+        <span class="step-badge"><i class="ri-number-3"></i> Manage</span>
+        <h3>Admin Oversight</h3>
+        <p>Admins monitor occupancy, extend reserves, and generate reports.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    &copy; 2025 SmartParkAI — Designed with ❤️ for smarter cities
+  </footer>
+
+  <!-- LOGIN MODAL -->
+  <div id="loginModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="loginTitle" aria-hidden="true">
+    <div class="dialog">
+      <div class="dialog__head">
+        <h3 id="loginTitle" class="dialog__title">Login</h3>
+        <button class="close" type="button" aria-label="Close" data-close>&times;</button>
+      </div>
+
+      <div class="dialog__body">
+        <!-- SAME FORM FOR BOTH ROLES -->
+        <form class="login" method="post" action="/login">
+          <input type="hidden" name="role" id="roleInput" value="">
+          <label for="email">Email</label>
+          <input id="email" type="email" name="email" required placeholder="you@example.com" autocomplete="username">
+
+          <label for="password">Password</label>
+          <input id="password" type="password" name="password" required placeholder="********" autocomplete="current-password">
+
+          <button class="submit" type="submit">Log in</button>
+          <div class="small">New here? <a href="/signup">Go to signup</a></div>
+        </form>
+      </div>
+
+      <div class="dialog__foot">
+        <button class="btn secondary" type="button" data-close>Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* -------- Modal login behavior (same as before) -------- */
+    const modal = document.getElementById('loginModal');
+    const title = document.getElementById('loginTitle');
+    const roleInput = document.getElementById('roleInput');
+    const emailInput = document.getElementById('email');
+
+    function openModal(role) {
+      if (role === 'admin') { title.textContent = 'Admin Login'; roleInput.value = 'admin'; }
+      else { title.textContent = 'User Login'; roleInput.value = 'user'; }
+      modal.setAttribute('open',''); modal.removeAttribute('aria-hidden');
+      setTimeout(() => emailInput && emailInput.focus(), 50);
+      document.body.style.overflow = 'hidden';
+    }
+    function closeModal() { modal.removeAttribute('open'); modal.setAttribute('aria-hidden','true'); document.body.style.overflow = ''; }
+    document.querySelectorAll('[data-open-login]').forEach(btn => btn.addEventListener('click', () => openModal(btn.dataset.role)));
+    document.querySelectorAll('[data-close]').forEach(btn => btn.addEventListener('click', closeModal));
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && modal.hasAttribute('open')) closeModal(); });
+    const params = new URLSearchParams(window.location.search);
+    const role = params.get('role');
+    if (role === 'admin' || role === 'user') openModal(role);
+
+    /* -------- Lightweight Carousel (autoplay + swipe + dots) -------- */
+    const slides = document.getElementById('slides');
+    const prev = document.getElementById('prev');
+    const next = document.getElementById('next');
+    const dotsWrap = document.getElementById('dots');
+    const total = slides.children.length;
+    let index = 0, timer = null, startX = 0, deltaX = 0;
+
+    // Create dots
+    for (let i = 0; i < total; i++) {
+      const d = document.createElement('button');
+      d.className = 'dot' + (i===0 ? ' active' : '');
+      d.setAttribute('aria-label', 'Go to slide ' + (i+1));
+      d.addEventListener('click', () => go(i, true));
+      dotsWrap.appendChild(d);
+    }
+    const dots = Array.from(dotsWrap.children);
+
+    function render() {
+      slides.style.transform = `translateX(-${index * 100}%)`;
+      dots.forEach((d, i) => d.classList.toggle('active', i === index));
+    }
+    function go(i, user=false) {
+      index = (i + total) % total;
+      render();
+      if (user) restart();
+    }
+    function nextSlide() { go(index + 1); }
+    function prevSlide() { go(index - 1); }
+    function start() { timer = setInterval(nextSlide, 4500); }
+    function stop() { clearInterval(timer); timer = null; }
+    function restart(){ stop(); start(); }
+
+    // Controls
+    next.addEventListener('click', () => go(index+1, true));
+    prev.addEventListener('click', () => go(index-1, true));
+
+    // Swipe (touch)
+    slides.addEventListener('touchstart', (e) => { stop(); startX = e.touches[0].clientX; deltaX = 0; }, {passive:true});
+    slides.addEventListener('touchmove', (e) => { deltaX = e.touches[0].clientX - startX; }, {passive:true});
+    slides.addEventListener('touchend', () => {
+      if (Math.abs(deltaX) > 50) { deltaX < 0 ? nextSlide() : prevSlide(); }
+      start();
+    });
+
+    // Pause on hover (desktop)
+    const carousel = document.getElementById('carousel');
+    carousel.addEventListener('mouseenter', stop);
+    carousel.addEventListener('mouseleave', start);
+
+    // Kick off
+    render(); start();
+  </script>
+</body>
+</html>

@@ -1,0 +1,168 @@
+{% extends 'base.html' %}
+{% block title %}History{% endblock %}
+
+{% block head %}
+<style>
+  /* page polish layered on top of your global theme */
+  .page-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+  .page-head h1{margin:0;color:#fff;display:flex;align-items:center;gap:.5rem}
+.filters { padding:16px;background: #91a0b57b; border:1px solid rgba(255,255,255,.12);margin-bottom: 16px;
+    border-radius:16px; box-shadow:0 8px 24px rgba(0,0,0,.45); overflow:hidden;}
+  /* filters card */
+  .filters.card{padding:16px}
+  .grid-4{display:grid;gap:12px;grid-template-columns:repeat(4,1fr)}
+  .grid-2{display:grid;gap:12px;grid-template-columns:repeat(2,1fr);margin-top:6px}
+  @media (max-width:980px){ .grid-4{grid-template-columns:repeat(2,1fr)} }
+  @media (max-width:560px){ .grid-4,.grid-2{grid-template-columns:1fr} }
+  label{color:#cbd5e1;font-weight:600;font-size:.9rem;margin-bottom:4px;display:block}
+  input[type="text"], input[type="date"], select{
+    width:100%;background:#0f172a;color:#f1f5f9;border:1px solid rgba(255,255,255,.2);
+    border-radius:12px;padding:.75rem .85rem;outline:none
+  }
+  input:focus, select:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.35)}
+  .btn-secondary{background:linear-gradient(180deg,#1f2937,#0f172a);border:1px solid var(--border);color:#e5e7eb}
+
+  /* table card */
+  .table-card{
+    background:rgba(15,23,42,.85); border:1px solid rgba(255,255,255,.12);
+    border-radius:16px; box-shadow:0 8px 24px rgba(0,0,0,.45); overflow:hidden;
+  }
+  .table{width:100%;border-collapse:collapse}
+  .table thead th{
+    text-align:left; font-size:.9rem; color:#dbe4ff; letter-spacing:.2px;
+    background:rgba(255,255,255,.05); padding:12px 10px; border-bottom:1px solid var(--border)
+  }
+  .table tbody td{
+    padding:12px 10px; border-bottom:1px solid var(--border); color:#e2e8f0
+  }
+  .table tbody tr:hover td{ background:rgba(255,255,255,.03) }
+
+  /* action badges */
+  .badge{
+    display:inline-flex;align-items:center;gap:.35rem;
+    padding:.18rem .5rem;border-radius:999px;font-size:.78rem;font-weight:800;
+    border:1px solid rgba(255,255,255,.15)
+  }
+  .badge-reserve{ background:rgba(250,204,21,.15); color:#fde68a; border-color:rgba(250,204,21,.4) }
+  .badge-checkin{ background:rgba(34,197,94,.18); color:#bbf7d0; border-color:rgba(34,197,94,.45) }
+  .badge-cancel{ background:rgba(239,68,68,.18); color:#fecaca; border-color:rgba(239,68,68,.45) }
+  .badge-expire{ background:rgba(148,163,184,.18); color:#e5e7eb; border-color:rgba(148,163,184,.35) }
+
+  /* pagination */
+  .pagination{
+    margin:12px auto 0; display:flex; align-items:center; justify-content:center; gap:10px
+  }
+  .pagination span{ color:#cbd5e1 }
+</style>
+{% endblock %}
+
+{% block breadcrumb %}
+  <a href="{{ url_for('views.home') }}"><i class="ri-home-4-line"></i> Home</a>
+  <span class="sep">›</span> <a href="{{ url_for('views.admin_dashboard') }}">Admin</a>
+  <span class="sep">›</span> History
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h1><i class="ri-time-line" style="color:var(--primary)"></i> History</h1>
+</div>
+
+<form method="get" class=" filters" autocomplete="off">
+  <div class="grid-4">
+    <div>
+      <label>Vehicle #</label>
+      <input type="text" name="q" value="{{ q }}" placeholder="KA01AB1234">
+    </div>
+    <div>
+      <label>From (YYYY-MM-DD)</label>
+      <input type="date" name="from" value="{{ date_from }}">
+    </div>
+    <div>
+      <label>To (YYYY-MM-DD)</label>
+      <input type="date" name="to" value="{{ date_to }}">
+    </div>
+    <div>
+      <label>Action</label>
+      <select name="action">
+        <option value="">All</option>
+        {% for a in ['reserve','checkin','cancel','expire'] %}
+          <option value="{{ a }}" {% if action==a %}selected{% endif %}>{{ a|capitalize }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div>
+      <label>Lot</label>
+      <select name="lot_id">
+        <option value="">All</option>
+        {% for lot in lots %}
+          <option value="{{ lot.id }}" {% if lot_id==lot.id %}selected{% endif %}>{{ lot.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div style="align-self:end; display:flex; gap:8px; justify-content:flex-end;">
+      <button class="btn" type="submit"><i class="ri-filter-2-line"></i> Filter</button>
+      <a class="btn btn-secondary" href="{{ url_for('views.admin_history') }}"><i class="ri-refresh-line"></i> Reset</a>
+    </div>
+  </div>
+</form>
+
+<div class="table-card">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Time (UTC)</th>
+        <th>Action</th>
+        <th>Lot</th>
+        <th>Slot</th>
+        <th>Vehicle</th>
+        <th>User ID</th>
+        <th>Prev → New</th>
+        <th>Note</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for ev in events.items %}
+      <tr>
+        <td>{{ ev.ts.strftime("%Y-%m-%d %H:%M:%S") }}</td>
+        <td>
+          <span class="badge badge-{{ ev.action }}">
+            {% if ev.action == 'reserve' %}<i class="ri-time-line"></i>{% endif %}
+            {% if ev.action == 'checkin' %}<i class="ri-login-circle-line"></i>{% endif %}
+            {% if ev.action == 'cancel' %}<i class="ri-close-circle-line"></i>{% endif %}
+            {% if ev.action == 'expire' %}<i class="ri-timer-off-line"></i>{% endif %}
+            {{ ev.action|capitalize }}
+          </span>
+        </td>
+        <td>#{{ ev.lot_id }}</td>
+        <td>#{{ ev.slot.number if ev.slot else ev.slot_id }}</td>
+        <td>{{ ev.car_number or '' }}</td>
+        <!-- <td>{{ ev.user_id or '' }}</td> -->
+         <td>{{ ev.user.email if ev.user else '' }}</td>
+
+        <td>{{ (ev.prev_status or '-') ~ " → " ~ (ev.new_status or '-') }}</td>
+        <td style="max-width:340px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+          {{ ev.note or '' }}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="8" style="text-align:center; opacity:.7;">No events</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if events.pages > 1 %}
+  <div class="pagination">
+    {% if events.has_prev %}
+      <a class="btn btn-secondary" href="{{ url_for('views.admin_history', page=events.prev_num, q=q, from=date_from, to=date_to, action=action, lot_id=lot_id) }}">Prev</a>
+    {% endif %}
+    <span>Page {{ events.page }} / {{ events.pages }}</span>
+    {% if events.has_next %}
+      <a class="btn btn-secondary" href="{{ url_for('views.admin_history', page=events.next_num, q=q, from=date_from, to=date_to, action=action, lot_id=lot_id) }}">Next</a>
+    {% endif %}
+  </div>
+{% endif %}
+{% endblock %}

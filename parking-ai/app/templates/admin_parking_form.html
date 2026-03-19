@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% block title %}Add Parking Lot{% endblock %}
+
+{% block head %}
+<style>
+  body{color:#e2e8f0}
+
+  /* page header */
+  .page-head{
+    display:flex;justify-content:space-between;align-items:center;
+    margin-bottom:16px;flex-wrap:wrap;gap:12px
+  }
+  .page-head h1{margin:0;color:#fff;display:flex;align-items:center;gap:.5rem}
+  .btn--ghost{background:#1e293b;color:#e5e7eb;border:1px solid var(--border)}
+
+  /* card form */
+  .card{
+    background:rgba(15,23,42,.85);
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:16px;
+    box-shadow:0 8px 24px rgba(0,0,0,.5);
+    padding:18px;
+    max-width:720px;
+    margin:0 auto;
+  }
+  h2{color:#f1f5f9;font-size:1.05rem;margin:.3rem 0 .8rem}
+
+  label{color:#cbd5e1;font-weight:600;font-size:.9rem;display:block;margin-top:10px;margin-bottom:4px}
+
+  input[type="text"],input[type="number"]{
+    width:100%;background:#0f172a;color:#f1f5f9;
+    border:1px solid rgba(255,255,255,.2);border-radius:12px;
+    padding:.8rem .9rem
+  }
+  input:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.4)}
+
+  .btn{background:#2563eb;color:#fff}
+  .btn:hover{background:#1d4ed8}
+
+  .hint{color:#94a3b8;font-size:.88rem}
+
+  /* map */
+  .map-wrap{border:1px solid rgba(255,255,255,.15);border-radius:12px;overflow:hidden;margin-top:6px}
+  #map{height:300px}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h1><i class="ri-add-line" style="color:var(--primary)"></i> Add Parking Lot</h1>
+  <a class="btn btn--ghost" href="{{ url_for('views.admin_parking_list') }}">
+    <i class="ri-arrow-left-line"></i> Back to Lots
+  </a>
+</div>
+
+<form method="post" class="card" id="lotForm">
+  <h2>Lot Details</h2>
+  <label for="name">Parking Building Name</label>
+  <input id="name" type="text" name="name" placeholder="e.g., West Tower Parking" required />
+
+  <label for="total_slots">No. of Parking Slots</label>
+  <input id="total_slots" type="number" name="total_slots" min="1" value="50" required />
+
+  <h2>Location</h2>
+  <p class="hint">Click on the map or drag the marker to set the pin.</p>
+  <div class="map-wrap"><div id="map"></div></div>
+
+  <div style="margin-top:12px;display:grid;gap:12px;grid-template-columns:1fr 1fr">
+    <div>
+      <label for="lat">Latitude</label>
+      <input id="lat" type="text" name="latitude" readonly required />
+    </div>
+    <div>
+      <label for="lng">Longitude</label>
+      <input id="lng" type="text" name="longitude" readonly required />
+    </div>
+  </div>
+
+  <div style="margin-top:16px">
+    <button type="submit" class="btn"><i class="ri-save-3-line"></i> Save Lot</button>
+  </div>
+</form>
+
+<!-- Leaflet CSS/JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  const defaultLat=12.9716,defaultLng=77.5946;
+  const map=L.map('map').setView([defaultLat,defaultLng],13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+  let marker=L.marker([defaultLat,defaultLng],{draggable:true}).addTo(map);
+
+  const latInput=document.getElementById('lat'),
+        lngInput=document.getElementById('lng');
+
+  function setInputs(latlng){
+    const lat=latlng.lat.toFixed(6),lng=latlng.lng.toFixed(6);
+    latInput.value=lat;lngInput.value=lng;
+  }
+  setInputs(marker.getLatLng());
+  map.on('click',e=>{marker.setLatLng(e.latlng);setInputs(e.latlng)});
+  marker.on('dragend',()=>setInputs(marker.getLatLng()));
+</script>
+{% endblock %}

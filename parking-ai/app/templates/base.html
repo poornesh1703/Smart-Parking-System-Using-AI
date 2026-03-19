@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}Parking AI{% endblock %}</title>
+
+  <!-- Global theme CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+
+  <!-- optional favicon to avoid 404s -->
+  <link rel="icon" href="data:;base64,iVBORw0KGgo=" />
+
+  <!-- Inter font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Remix Icon (lightweight icon set) -->
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" rel="stylesheet">
+
+  {# Allow child templates to add extra head content if needed #}
+  {% block head %}{% endblock %}
+</head>
+<body class="spai-body">
+
+  <!-- Top nav -->
+  <nav class="nav">
+    <div class="nav__inner">
+      <a class="nav__brand" href="{{ url_for('views.home') }}">
+        <i class="ri-car-fill"></i> SmartParkAI
+      </a>
+
+      <div class="spacer"></div>
+
+      {% if current_user.is_authenticated %}
+        <span class="nav__hello">
+          <i class="ri-user-smile-line"></i>
+          Hello, {{ current_user.name }} <span class="role-badge">{{ current_user.role }}</span>
+        </span>
+        <a class="btn btn--ghost logout" href="{{ url_for('auth.logout') }}"><i class="ri-logout-box-r-line"></i> Logout</a>
+      {% else %}
+        <a class="btn btn--ghost" href="{{ url_for('auth.login') }}"><i class="ri-login-circle-line"></i> Login</a>
+        <a class="btn" href="{{ url_for('auth.signup') }}"><i class="ri-user-add-line"></i> Sign up</a>
+      {% endif %}
+    </div>
+  </nav>
+
+  <!-- Breadcrumbs -->
+  <div class="breadcrumb">
+    {% if build_breadcrumb is defined %}
+      {% set trail = build_breadcrumb(lot=lot) if lot is defined else build_breadcrumb() %}
+      {% for item in trail %}
+        {% if not item.active and item.href %}
+          <a href="{{ item.href }}">{{ item.label }}</a>
+        {% else %}
+          <strong>{{ item.label }}</strong>
+        {% endif %}
+        {% if not loop.last %} <span class="sep">›</span> {% endif %}
+      {% endfor %}
+    {% else %}
+      {% block breadcrumb %}{% endblock %}
+    {% endif %}
+  </div>
+
+  <!-- Flash messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash">
+        {% for category, message in messages %}
+          <div class="flash__item {{ category }}">
+            {% if category == 'success' %}<i class="ri-check-line"></i>{% endif %}
+            {% if category == 'error' %}<i class="ri-error-warning-line"></i>{% endif %}
+            {% if category == 'warning' %}<i class="ri-alert-line"></i>{% endif %}
+            {% if category == 'info' %}<i class="ri-information-line"></i>{% endif %}
+            <span>{{ message }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="footer">
+    <div class="footer__inner">
+      <span>&copy; {{ 2025 }} SmartParkAI</span>
+      <span class="muted">Built for smarter cities</span>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,33 @@
+# From your repo root: E:\Flask Project\parking-ai
+ni .gitignore -ItemType File -Force
+@"
+# Python
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Caches & misc
+.ipynb_checkpoints/
+.pytest_cache/
+.mypy_cache/
+.cache/
+.ruff_cache/
+.DS_Store
+.idea/
+.vscode/
+*.log
+
+# Secrets
+.env
+"@ | Out-File -Encoding UTF8 .gitignore
+
+# Untrack the venv (but keep it on disk)
+git rm -r --cached .venv

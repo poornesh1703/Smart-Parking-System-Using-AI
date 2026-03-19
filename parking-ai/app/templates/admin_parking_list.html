@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+{% block title %}Admin: Parking Lots{% endblock %}
+
+{% block head %}
+<style>
+  .admin-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px}
+  .admin-head h1{margin:0}
+  .btn--ghost{background:linear-gradient(180deg,#1f2937,#0f172a);border:1px solid var(--border);color:#e5e7eb}
+
+  .lot-list{display:grid; gap:16px; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));}
+  .lot-card{
+    background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+    border:1px solid var(--border); border-radius:16px; padding:16px;
+    box-shadow:var(--shadow);
+    transition: transform .12s, box-shadow .2s, border-color .2s;
+  }
+  .lot-card:hover{ transform: translateY(-2px); border-color: rgba(59,130,246,.35); box-shadow:0 10px 32px rgba(0,0,0,.45), 0 0 0 4px var(--ring) }
+  .lot-header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+  .lot-header h3{margin:0;font-size:1.15rem;font-weight:800;color:#fff;display:flex;align-items:center;gap:.45rem}
+  .lot-header h3 i{color:var(--primary)}
+  .lot-meta{font-size:.92rem;color:#c7d2fe}
+  .lot-slots{margin-top:12px; display:flex; flex-wrap:wrap; gap:8px;}
+  .slot-chip{
+    flex:0 0 auto;
+    padding:.4rem .65rem; border-radius:10px; font-size:.8rem; font-weight:700;
+    border:1px solid rgba(255,255,255,.12);
+    display:flex; align-items:center; gap:.35rem;
+    background:#101827; color:#dbeafe;
+  }
+  .slot-chip.reserved{background:rgba(250,204,21,.15);color:#fde68a;border-color:rgba(250,204,21,.4)}
+  .slot-chip.parked{background:rgba(34,197,94,.18);color:#bbf7d0;border-color:rgba(34,197,94,.45)}
+  .slot-chip.empty{background:#1e293b;color:#e2e8f0;border-color:rgba(255,255,255,.15)}
+
+  .lot-footer{margin-top:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+  .maps-link{color:#93c5fd;text-decoration:none;font-weight:600}
+  .maps-link:hover{text-decoration:underline}
+
+  /* modal */
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:50}
+  .modal.open{display:flex}
+  .modal-content{background:#0b1220;border:1px solid var(--border);border-radius:12px;padding:16px;max-width:460px;width:92%}
+  .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+  .btn-danger{background:#b91c1c;border:1px solid #b91c1c;color:#fff}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-head">
+  <h1><i class="ri-parking-box-line" style="color:var(--primary)"></i> Parking Lots</h1>
+  <a class="btn" href="{{ url_for('views.admin_parking_new') }}"><i class="ri-add-line"></i> Add Parking Lot</a>
+</div>
+
+{% if lots %}
+  <div class="lot-list">
+    {% for lot in lots %}
+      {% set maps = 'https://www.google.com/maps?q=' ~ ('%.6f'|format(lot.latitude)) ~ ',' ~ ('%.6f'|format(lot.longitude)) %}
+      <div class="lot-card">
+        <div class="lot-header">
+          <h3><i class="ri-community-line"></i> {{ lot.name }}</h3>
+          <span class="lot-meta"><i class="ri-map-pin-2-line"></i> {{ '%.5f'|format(lot.latitude) }}, {{ '%.5f'|format(lot.longitude) }}</span>
+        </div>
+
+        <div class="lot-meta"><i class="ri-grid-line"></i> Total Slots: {{ lot.total_slots }}</div>
+
+        <!-- show slots inside the card -->
+        <div class="lot-slots">
+          {% for slot in lot.slots %}
+            <span class="slot-chip {% if slot.status == 'reserved' %}reserved{% elif slot.status == 'parked' %}parked{% else %}empty{% endif %}">
+              #{{ slot.number }}
+              {% if slot.status == 'reserved' %}<i class="ri-time-line"></i>
+              {% elif slot.status == 'parked' %}<i class="ri-car-fill"></i>
+              {% else %}<i class="ri-checkbox-blank-circle-line"></i>
+              {% endif %}
+            </span>
+          {% endfor %}
+        </div>
+
+        <div class="lot-footer">
+          <a href="{{ maps }}" class="maps-link" target="_blank" rel="noopener">
+            <i class="ri-external-link-line"></i> Open in Maps
+          </a>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <a class="btn btn--ghost" href="{{ url_for('views.admin_parking_detail', lot_id=lot.id) }}">
+              <i class="ri-settings-4-line"></i> Manage
+            </a>
+            <!-- DELETE button opens confirm modal -->
+            <button class="btn btn-danger"
+                    onclick="openDeleteModal('{{ url_for('views.admin_parking_delete', lot_id=lot.id) }}', '{{ lot.name|e }}')">
+              <i class="ri-delete-bin-6-line"></i> Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="card">
+    <p class="muted">No parking lots yet.</p>
+    <p class="mt-1"><a class="btn" href="{{ url_for('views.admin_parking_new') }}"><i class="ri-add-line"></i> Create your first lot</a></p>
+  </div>
+{% endif %}
+
+<!-- Confirm Delete Modal (single, reused) -->
+<div id="deleteModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="delTitle">
+  <div class="modal-content">
+    <h3 id="delTitle">Delete Parking Lot</h3>
+    <p id="delText">Are you sure you want to delete this parking lot?</p>
+    <div class="modal-actions">
+      <button class="btn btn--ghost" type="button" onclick="closeDeleteModal()">Cancel</button>
+      <form id="deleteForm" method="POST" style="display:inline;">
+        {# If you use CSRF, uncomment: {{ csrf_token() }} #}
+        <button class="btn btn-danger" type="submit">Yes, delete</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  const modal = document.getElementById('deleteModal');
+  const form  = document.getElementById('deleteForm');
+  const text  = document.getElementById('delText');
+
+  function openDeleteModal(actionUrl, lotName){
+    form.action = actionUrl;
+    text.textContent = `Are you sure you want to delete “${lotName}”? This action cannot be undone.`;
+    modal.classList.add('open');
+  }
+  function closeDeleteModal(){
+    modal.classList.remove('open');
+  }
+  // close on ESC / backdrop click
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeDeleteModal();
+  });
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeDeleteModal();
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,238 @@
+{% extends 'base.html' %}
+{% block title %}{{ lot.name }} — Slots{% endblock %}
+
+{% block head %}
+<style>
+  /* Page polish on top of global style.css */
+  .lot-subtitle{ color:var(--muted); margin-top:2px }
+
+  .legend{
+    display:flex; gap:.6rem; flex-wrap:wrap;
+    margin:14px 0 18px; padding:10px 12px;
+    background:rgba(255,255,255,.03);
+    border:1px solid var(--border); border-radius:12px;
+  }
+  .legend-item{
+    display:inline-flex; align-items:center; gap:.45rem;
+    padding:.25rem .6rem; border-radius:999px;
+    font-size:.82rem; font-weight:800; color:#dbe4ff;
+    border:1px solid rgba(255,255,255,.12);
+  }
+  .legend-empty{ background:#0b1220 }
+  .legend-reserved{ background:rgba(234,179,8,.15); color:#fde68a; border-color:rgba(234,179,8,.35) }
+  .legend-parked{ background:rgba(34,197,94,.18); color:#bbf7d0; border-color:rgba(34,197,94,.4) }
+
+  .slots-grid{
+    display:grid; gap:14px;
+    grid-template-columns: repeat( auto-fill, minmax(240px, 1fr) );
+  }
+  .slot-box{
+    position:relative;
+    background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+    border:1px solid var(--border);
+    border-radius: var(--radius);
+    padding:14px 14px 12px;
+    box-shadow: var(--shadow);
+    overflow:hidden;
+    transition: transform .12s ease, box-shadow .2s ease, border-color .2s ease;
+  }
+  .slot-box:hover{
+    transform: translateY(-2px);
+    border-color: rgba(59,130,246,.35);
+    box-shadow: 0 10px 32px rgba(0,0,0,.45), 0 0 0 4px var(--ring);
+  }
+  .slot-empty{ background: linear-gradient(180deg, rgba(51,65,85,.22), rgba(2,6,23,.35)); }
+  .slot-reserved{ background: linear-gradient(180deg, rgba(250,204,21,.12), rgba(120,53,15,.15)); }
+  .slot-parked{ background: linear-gradient(180deg, rgba(34,197,94,.14), rgba(6,78,59,.18)); }
+
+  .slot-number{
+    display:flex; align-items:center; gap:.5rem;
+    font-weight:800; font-size:1.05rem; color:#fff; letter-spacing:.2px;
+  }
+  .slot-number i{ color:var(--primary) }
+
+  .slot-status{
+    margin-top:6px; color:#cbd5e1; font-size:.93rem; display:flex; align-items:center; gap:.5rem; flex-wrap:wrap;
+  }
+  .badge{ padding:.15rem .5rem; border-radius:999px; font-size:.74rem; font-weight:800; border:1px solid rgba(255,255,255,.15) }
+  .badge-empty{ background:#0b1220 }
+  .badge-reserved{ background:rgba(234,179,8,.15); color:#fde68a; border-color:rgba(234,179,8,.4) }
+  .badge-parked{ background:rgba(34,197,94,.18); color:#bbf7d0; border-color:rgba(34,197,94,.45) }
+
+  .slot-timer{
+    margin-top:8px;
+    display:inline-flex; align-items:center; gap:.4rem;
+    padding:.2rem .55rem; border-radius:999px; font-size:.78rem; font-weight:800;
+    color:#fef3c7; background:rgba(234,179,8,.18); border:1px solid rgba(234,179,8,.4);
+  }
+
+  /* Modal (uses global .modal scaffold) */
+  .modal.hidden{ display:none }
+  .modal__dialog{
+    width:min(560px,96vw);
+    background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+    border:1px solid var(--border); border-radius:16px; overflow:hidden; box-shadow: var(--shadow);
+  }
+  .modal__header{
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding:14px 16px; background: rgba(37,99,235,.12); border-bottom:1px solid var(--border);
+  }
+  .modal__header h3{ margin:0; font-size:1.05rem; font-weight:800 }
+  .modal__close{ appearance:none; border:0; background:transparent; color:#cfd7ea; font-size:1.4rem; cursor:pointer }
+  .modal__close:hover{ color:#fff }
+  .modal__body{ padding:16px }
+  .modal__footer{ padding:14px 16px; display:flex; justify-content:flex-end; gap:8px; border-top:1px solid var(--border) }
+
+  .grid-2{ display:grid; grid-template-columns: 1fr 1fr; gap:10px }
+  @media (max-width:560px){ .grid-2{ grid-template-columns: 1fr } }
+
+  @media (max-width:720px){
+    .slots-grid{ grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width:520px){
+    .slots-grid{ grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock %}
+
+{% block breadcrumb %}
+  <a href="{{ url_for('views.home') }}"><i class="ri-home-4-line"></i> Home</a>
+  <span class="sep">›</span> <a href="{{ url_for('views.admin_parking_list') }}">Parking Lots</a>
+  <span class="sep">›</span> {{ lot.name }}
+{% endblock %}
+
+{% block content %}
+<h1>{{ lot.name }}</h1>
+<p class="lot-subtitle"><i class="ri-map-pin-2-line"></i> Location: {{ '%.5f'|format(lot.latitude) }}, {{ '%.5f'|format(lot.longitude) }}</p>
+
+<div class="legend">
+  <span class="legend-item legend-empty"><i class="ri-checkbox-blank-circle-line"></i> Empty</span>
+  <span class="legend-item legend-reserved"><i class="ri-time-line"></i> Reserved</span>
+  <span class="legend-item legend-parked"><i class="ri-car-fill"></i> Parked</span>
+</div>
+
+<div class="slots-grid">
+  {% for s in slots %}
+    <div
+      class="slot-box {% if s.status == 'parked' %}slot-parked{% elif s.status == 'reserved' %}slot-reserved{% else %}slot-empty{% endif %}"
+      {% if s.status == 'reserved' and s.reserved_until %} data-reserved-until="{{ s.reserved_until.isoformat() }}Z"{% endif %}
+    >
+      <div class="slot-number">
+        <i class="ri-parking-box-line"></i> #{{ s.number }}
+      </div>
+
+      <div class="slot-status">
+        {% if s.status == 'empty' %}
+          <span class="badge badge-empty"><i class="ri-checkbox-blank-circle-line"></i> Empty</span>
+        {% elif s.status == 'reserved' %}
+          <span class="badge badge-reserved"><i class="ri-time-line"></i> Reserved</span>
+        {% else %}
+          <span class="badge badge-parked"><i class="ri-car-fill"></i> Parked</span>
+        {% endif %}
+        {% if s.car_number %} • <i class="ri-drive-line"></i> {{ s.car_number }}{% endif %}
+      </div>
+
+      {% if s.status == 'reserved' and s.reserved_until %}
+        <div class="slot-timer"><i class="ri-timer-line"></i> <span>Expires soon</span></div>
+      {% endif %}
+    </div>
+  {% endfor %}
+</div>
+
+<!-- Billing Modal (single instance) -->
+<div id="billModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="billTitle">
+  <div class="modal__dialog">
+    <div class="modal__header">
+      <h3 id="billTitle"><i class="ri-receipt-line"></i> Parking Bill</h3>
+      <button class="modal__close" onclick="closeBillModal()" aria-label="Close">&times;</button>
+    </div>
+    <div class="modal__body" id="billBody"><!-- filled by JS --></div>
+    <div class="modal__footer">
+      <button class="btn btn-secondary" onclick="closeBillModal()"><i class="ri-close-circle-line"></i> Close</button>
+      <button class="btn" onclick="ackBill()"><i class="ri-check-double-line"></i> Mark as Acknowledged</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ====== Reserved countdown ====== */
+(function startCountdown(){
+  const boxes = document.querySelectorAll('.slot-box.slot-reserved[data-reserved-until]');
+  function tick(){
+    const now = Date.now();
+    boxes.forEach(b => {
+      const untilStr = b.dataset.reservedUntil;
+      if(!untilStr) return;
+      const until = new Date(untilStr).getTime();
+      const diff = Math.max(0, until - now);
+      const secs = Math.floor(diff / 1000);
+      const mm = String(Math.floor(secs / 60)).padStart(2,'0');
+      const ss = String(secs % 60).padStart(2,'0');
+      let el = b.querySelector('.slot-timer');
+      if (!el) { el = document.createElement('div'); el.className = 'slot-timer'; b.appendChild(el); }
+      el.innerHTML = `<i class="ri-timer-line"></i> ${diff ? `Expires in ${mm}:${ss}` : 'Expired'}`;
+    });
+  }
+  tick();
+  setInterval(tick, 1000);
+})();
+
+/* ====== Billing modal ====== */
+let currentBill = null;
+
+function openBillModal(bill){
+  currentBill = bill;
+  const body = document.getElementById('billBody');
+  body.innerHTML = `
+    <div class="grid-2">
+      <div><strong>Vehicle:</strong> ${bill.car_number}</div>
+      <div><strong>Slot:</strong> #${bill.slot_id}</div>
+      <div><strong>Start:</strong> ${new Date(bill.started_at).toLocaleString()}</div>
+      <div><strong>End:</strong> ${new Date(bill.ended_at).toLocaleString()}</div>
+      <div><strong>Minutes:</strong> ${bill.minutes_total}</div>
+      <div><strong>Amount:</strong> ₹${bill.amount_inr}</div>
+    </div>
+  `;
+  document.getElementById('billModal').classList.remove('hidden');
+}
+
+function closeBillModal(){
+  document.getElementById('billModal').classList.add('hidden');
+  currentBill = null;
+}
+
+async function ackBill(){
+  if(!currentBill) return;
+  try{
+    await fetch(`/api/session/${currentBill.session_id}/ack`, {
+      method:'POST',
+      headers:{'X-Requested-With':'fetch'}
+    });
+  }catch(e){}
+  closeBillModal();
+}
+
+/* ====== Polling for pending bills ====== */
+const LOT_ID = {{ lot.id }};
+async function pollBills(){
+  try{
+    const r = await fetch(`/api/lot/${LOT_ID}/pending_charges`, { headers:{'X-Requested-With':'fetch'} });
+    const data = await r.json();
+    if(data && data.ok && data.items && data.items.length){
+      const newest = data.items[0];
+      if(!currentBill || currentBill.session_id !== newest.session_id){
+        openBillModal(newest);
+      }
+    }
+  }catch(e){}
+}
+setInterval(pollBills, 5000);
+pollBills();
+
+/* Close bill modal on background click / Esc */
+document.getElementById('billModal').addEventListener('click', (e) => {
+  if (e.target.id === 'billModal') closeBillModal();
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeBillModal(); });
+</script>
+{% endblock %}

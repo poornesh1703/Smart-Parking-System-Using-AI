@@ -1,0 +1,317 @@
+{% extends 'base.html' %}
+{% block title %}Detection — Entry / Exit{% endblock %}
+
+{% block head %}
+<style>
+  /* Page header */
+  .page-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+  .page-head h1{margin:0;color:#fff;display:flex;align-items:center;gap:.5rem}
+
+  /* Cards */
+  .card{padding:16px;background:rgba(15,23,42,.85);border:1px solid rgba(255,255,255,.12);
+        border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+  label{color:#cbd5e1;font-weight:600;font-size:.9rem;margin-bottom:6px;display:block}
+  .muted{color:#94a3b8}
+
+  /* Segmented control for Entry/Exit */
+  .segmented{display:inline-flex;background:#0f172a;border:1px solid rgba(255,255,255,.15);border-radius:12px;overflow:hidden}
+  .segmented label{margin:0}
+  .segmented input{display:none}
+  .segmented span{
+    padding:.55rem .9rem;display:inline-flex;align-items:center;gap:.45rem;cursor:pointer;
+    color:#cbd5e1;border-right:1px solid rgba(255,255,255,.1);user-select:none
+  }
+  .segmented span:last-child{border-right:0}
+  .segmented input:checked + span{background:#2563eb;color:#fff}
+
+  /* Grid layout */
+  .detect-grid{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+  .video-col{flex:1 1 520px;min-width:320px}
+  .side-col{flex:1 1 300px;min-width:280px}
+
+  /* Video & controls */
+  .video-wrap{background:#000;border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,.15)}
+  #video{display:block;width:100%;height:auto;background:#000}
+  .controls{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+  .btn{background:#2563eb;color:#fff;border:0;border-radius:12px;padding:.65rem .9rem;font-weight:700;cursor:pointer}
+  .btn:hover{background:#1d4ed8}
+  .btn[disabled]{opacity:.55;cursor:not-allowed}
+  .btn-secondary{background:linear-gradient(180deg,#1f2937,#0f172a);border:1px solid var(--border);color:#e5e7eb}
+
+  /* Inputs */
+  input[type="text"], select{
+    width:100%;background:#0f172a;color:#f1f5f9;border:1px solid rgba(255,255,255,.2);
+    border-radius:12px;padding:.75rem .85rem;outline:none
+  }
+  input:focus, select:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.35)}
+
+  /* Lot picker */
+  #lotCard small{display:block;margin-top:6px}
+
+  /* OCR/Status */
+  .status{margin-top:10px}
+  .pill{
+    display:inline-flex;align-items:center;gap:.45rem;padding:.22rem .6rem;border-radius:999px;
+    background:rgba(37,99,235,.14);border:1px solid rgba(37,99,235,.35);color:#bcd3ff;font-weight:800;font-size:.82rem
+  }
+  #msg{margin-top:8px;color:#cbd5e1;min-height:1.4em}
+
+  /* Table-esque spacing inside lot card */
+  .row{display:grid;gap:10px;grid-template-columns:1fr}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h1><i class="ri-car-fill" style="color:var(--primary)"></i> Vehicle Detection</h1>
+</div>
+
+<!-- Mode -->
+<div class="card" style="margin-bottom:12px;">
+  <label><strong>Mode</strong></label>
+  <div class="segmented" role="tablist" aria-label="Detection mode">
+    <label>
+      <input type="radio" name="mode" value="entry" checked>
+      <span><i class="ri-login-circle-line"></i> Entry</span>
+    </label>
+    <label>
+      <input type="radio" name="mode" value="exit">
+      <span><i class="ri-logout-circle-line"></i> Exit</span>
+    </label>
+  </div>
+</div>
+
+<!-- Camera picker (for DroidCam / Iriun / Camo etc.) -->
+<div id="cameraCard" class="card" style="margin-bottom:12px;">
+  <div class="row">
+    <div>
+      <label for="cameraSel"><strong>Camera</strong></label>
+      <select id="cameraSel"></select>
+      <small class="muted">Install DroidCam/Iriun/Camo on your phone & laptop. Then select the phone camera here.</small>
+    </div>
+  </div>
+</div>
+
+<!-- Lot picker (only when lots >= 2) -->
+<div id="lotCard" class="card" style="margin-bottom:12px; display:none;">
+  <div class="row">
+    <div>
+      <label for="lotSel"><strong>Lot</strong></label>
+      <select id="lotSel"></select>
+      <small class="muted">If your site has multiple lots, choose one.</small>
+    </div>
+  </div>
+</div>
+
+<!-- Camera + OCR -->
+<div class="card">
+  <div class="detect-grid">
+    <div class="video-col">
+      <div class="video-wrap">
+        <video id="video"
+          width="480" height="360"
+          autoplay playsinline muted controls
+          style="background:#000;"></video>
+      </div>
+      <div class="controls">
+        <button class="btn" id="startBtn"><i class="ri-camera-line"></i> Start Camera</button>
+        <button class="btn" id="captureBtn" disabled><i class="ri-scan-line"></i> Capture & Detect</button>
+      </div>
+    </div>
+
+    <div class="side-col">
+      <label for="plateOutput"><strong>Detected Plate</strong></label>
+      <input id="plateOutput" type="text" placeholder="---" />
+      <div class="controls">
+        <button class="btn" id="confirmBtn" disabled><i class="ri-send-plane-2-line"></i> Send to Server</button>
+      </div>
+      <div class="status">
+        <span class="pill"><i class="ri-information-line"></i> Status</span>
+        <div id="msg"></div>
+      </div>
+      <small class="muted">You can edit the detected plate if OCR is slightly off.</small>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden canvas for capture -->
+<canvas id="canvas" width="480" height="360" style="display:none;"></canvas>
+
+<script>
+  let lots = [];
+  let defaultLotId = null;   // single lot id or current selection
+  let stream = null;
+
+  const cameraSel  = document.getElementById('cameraSel');
+  const startBtn   = document.getElementById('startBtn');
+  const captureBtn = document.getElementById('captureBtn');
+  const confirmBtn = document.getElementById('confirmBtn');
+  const msg        = document.getElementById('msg');
+  const videoEl    = document.getElementById('video');
+  const canvas     = document.getElementById('canvas');
+
+  // --- CAMERA: list & start selected (works with DroidCam/Iriun/Camo) ---
+  async function ensurePermissionForLabels() {
+    // Some browsers hide labels until a device permission is granted once
+    try {
+      const tmp = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      tmp.getTracks().forEach(t => t.stop());
+    } catch (_) {
+      // Ignore; user will still be able to select unknown device names
+    }
+  }
+
+  async function listCameras() {
+    await ensurePermissionForLabels();
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const cams = devices.filter(d => d.kind === 'videoinput');
+
+    if (cams.length === 0) {
+      cameraSel.innerHTML = `<option value="">No cameras found</option>`;
+      return;
+    }
+
+    // Prefer an external/phone cam if we can guess by label
+    const preferredIdx = cams.findIndex(d =>
+      /droidcam|iriun|camo|epoccam|obs|usb|external/i.test(d.label || '')
+    );
+
+    cameraSel.innerHTML = cams
+      .map((d, i) => `<option value="${d.deviceId}" ${i===preferredIdx?'selected':''}>${d.label || 'Camera ' + (i+1)}</option>`)
+      .join('');
+
+    if (preferredIdx === -1) cameraSel.selectedIndex = 0;
+  }
+
+  async function startCam() {
+    // Stop previous stream if any
+    if (stream) {
+      stream.getTracks().forEach(t => t.stop());
+      stream = null;
+    }
+
+    const deviceId = cameraSel.value;
+    const constraints = deviceId
+      ? { video: { deviceId: { exact: deviceId } }, audio: false }
+      : { video: { facingMode: 'environment' }, audio: false };
+
+    try {
+      stream = await navigator.mediaDevices.getUserMedia(constraints);
+      videoEl.srcObject = stream;
+      captureBtn.disabled = false;
+      msg.textContent = 'Camera started.';
+    } catch (e) {
+      console.error(e);
+      alert('Cannot start selected camera. Check permissions or device is in use.');
+      msg.textContent = 'Failed to start camera.';
+    }
+  }
+
+  // --- CAPTURE & OCR ---
+  async function captureAndDetect() {
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.9));
+
+    const fd = new FormData();
+    fd.append('image', blob, 'frame.jpg');
+
+    msg.textContent = 'Detecting plate...';
+    confirmBtn.disabled = true;
+
+    const r = await fetch('/api/ocr', { method: 'POST', body: fd });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok || data.ok === false) {
+      msg.textContent = 'Detection failed: ' + (data.msg || r.status);
+      return;
+    }
+    document.getElementById('plateOutput').value = data.car_number || '';
+    msg.textContent = data.car_number ? ('Detected: ' + data.car_number) : 'No plate detected';
+    confirmBtn.disabled = !data.car_number;
+  }
+
+  // --- LOTS ---
+  async function loadLots() {
+    const r = await fetch('/api/lots', { headers: { 'X-Requested-With': 'fetch' } });
+    const data = await r.json().catch(() => ({}));
+    const lotSel = document.getElementById('lotSel');
+    const lotCard = document.getElementById('lotCard');
+
+    if (!r.ok || data.ok === false) {
+      console.warn('Failed to load lots');
+      return;
+    }
+
+    lots = data.items || [];
+
+    if (lots.length === 0) {
+      defaultLotId = null;
+      lotCard.style.display = 'none';
+      return;
+    }
+
+    if (lots.length === 1) {
+      defaultLotId = lots[0].id;
+      lotCard.style.display = 'none';
+    } else {
+      lotCard.style.display = 'block';
+      lotSel.innerHTML = lots.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+      defaultLotId = parseInt(lotSel.value, 10);
+      lotSel.addEventListener('change', () => {
+        defaultLotId = parseInt(lotSel.value, 10);
+      });
+    }
+  }
+
+  // --- SEND ENTRY/EXIT TO SERVER ---
+  async function sendToServer() {
+    const car = (document.getElementById('plateOutput').value || '').toUpperCase().trim();
+    if (!car) { alert('Enter or detect a car number first.'); return; }
+    if (!defaultLotId) { alert('No parking lot configured.'); return; }
+
+    const mode = [...document.querySelectorAll('input[name="mode"]')].find(r => r.checked).value; // 'entry'|'exit'
+    const url = mode === 'entry' ? '/api/camera/entry' : '/api/camera/exit';
+    const body = { lot_id: defaultLotId, car_number: car };
+
+    msg.textContent = (mode === 'entry') ? 'Assigning slot...' : 'Closing session...';
+
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await r.json().catch(() => ({}));
+
+    if (r.status === 409) { msg.textContent = data.msg || 'No parking slot available'; return; }
+    if (!r.ok || data.ok === false) { msg.textContent = 'Server rejected: ' + (data.msg || r.status); return; }
+
+    if (mode === 'entry') {
+      const n = data.slot_number ?? data.slot_id;
+      msg.textContent = 'Checked-in. Slot #' + n;
+    } else {
+      if (data.bill) {
+        const b = data.bill;
+        msg.textContent = `Billed ₹${b.amount_inr} for ${b.minutes_total} min. Freed slot #${b.slot_id}.`;
+      } else {
+        msg.textContent = 'No active session; slot freed (if applicable).';
+      }
+    }
+  }
+
+  // --- EVENTS ---
+  startBtn.addEventListener('click', startCam);
+  captureBtn.addEventListener('click', captureAndDetect);
+  confirmBtn.addEventListener('click', sendToServer);
+
+  // --- INIT ---
+  (async function init() {
+    await listCameras();
+    await loadLots();
+
+    // Refresh camera list if devices change (e.g., you launch DroidCam after page load)
+    if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
+      navigator.mediaDevices.addEventListener('devicechange', listCameras);
+    }
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block head %}
+<style>
+  /* page-specific polish on top of your global style.css */
+  .admin-header{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-bottom:12px}
+  .admin-header h1{margin:0}
+  .subtitle{color:var(--muted);margin:0}
+  .stats{
+    padding: 20px 0px 20px 0px;
+    display:grid;gap:12px;margin:16px 0 20px;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+  .stat{
+    background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.03));
+    border:1px solid var(--border);border-radius:12px; padding:14px;
+    box-shadow:var(--shadow);
+  }
+  .stat .k{font-size:1.35rem;font-weight:800;color:#fff}
+  .stat .l{color:#c7d2fe;font-size:.92rem}
+  .stat i{font-size:1.1rem;color:var(--primary);margin-right:.35rem}
+
+  .cards{
+    padding-top: 40px;
+    display:grid;gap:14px;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  }
+  .card-link{
+    display:block;text-decoration:none;color:inherit;
+    background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.03));
+    border:1px solid var(--border);border-radius:16px;padding:16px;
+    box-shadow:var(--shadow);transition:transform .12s, box-shadow .2s, border-color .2s;
+  }
+  .card-link:hover{transform:translateY(-2px);border-color:rgba(59,130,246,.35);box-shadow:0 10px 32px rgba(0,0,0,.45),0 0 0 4px var(--ring)}
+  .card-link h3{display:flex;align-items:center;gap:.5rem;margin:.25rem 0 .4rem}
+  .card-link h3 i{color:var(--primary)}
+  .card-link p{color:#a7b0c5;margin:0 0 10px}
+  .card-actions{display:flex;gap:8px;flex-wrap:wrap}
+  .btn--ghost{background:linear-gradient(180deg,#1f2937,#0f172a);border:1px solid var(--border);color:#e5e7eb}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-header">
+  <h1><i class="ri-dashboard-2-line" style="color:var(--primary)"></i> Admin Dashboard</h1>
+  <p class="subtitle">Manage parking lots, sessions, and reports.</p>
+</div>
+
+{# Optional quick stats — pass these from your view; falls back to 0/#}
+<div class="stats">
+  <div class="stat">
+    <div class="k"><i class="ri-community-line"></i>{{ lots_count|default(0) }}</div>
+    <div class="l">Lots</div>
+  </div>
+  <div class="stat">
+    <div class="k"><i class="ri-grid-line"></i>{{ total_slots|default(0) }}</div>
+    <div class="l">Total Slots</div>
+  </div>
+  <div class="stat">
+    <div class="k"><i class="ri-car-fill"></i>{{ occupied_count|default(0) }}</div>
+    <div class="l">Currently Parked</div>
+  </div>
+  <div class="stat">
+    <div class="k"><i class="ri-currency-line"></i>{{ revenue_today|default('₹0') }}</div>
+    <div class="l">Revenue (Today)</div>
+  </div>
+</div>
+<hr>
+<div class="cards">
+  <a class="card-link" href="{{ url_for('views.admin_parking_list') }}">
+    <h3><i class="ri-parking-box-line"></i> Manage Parking</h3>
+    <p>Create, edit, or disable lots; adjust slot counts and settings.</p>
+    <div class="card-actions">
+      <span class="btn btn--ghost"><i class="ri-edit-line"></i> Open</span>
+    </div>
+  </a>
+
+  <a class="card-link" href="{{ url_for('views.admin_history') }}">
+    <h3><i class="ri-time-line"></i> View History</h3>
+    <p>See check-ins, reservations, and cancellations with timestamps.</p>
+    <div class="card-actions">
+      <span class="btn btn--ghost"><i class="ri-search-eye-line"></i> Review</span>
+    </div>
+  </a>
+
+  <a class="card-link" href="{{ url_for('views.admin_bills') }}">
+    <h3><i class="ri-bill-line"></i> Bills / Sessions</h3>
+    <p>Track active sessions, generate bills, and export receipts.</p>
+    <div class="card-actions">
+      <span class="btn btn--ghost"><i class="ri-file-download-line"></i> Open</span>
+    </div>
+  </a>
+
+
+   <a class="card-link" href="/detect">
+    <h3><i class="ri-car-fill"></i> Detect Vehicle</h3>
+    <p>live detection of Vehicle from the parking slot camera</p>
+    <div class="card-actions">
+      <span class="btn btn--ghost"><i class="ri-file-download-line"></i> Open</span>
+    </div>
+  </a>
+</div>
+{% endblock %}

@@ -1,0 +1,241 @@
+{% extends 'base.html' %}
+{% block title %}{{ lot.name }} — Slots{% endblock %}
+
+{% block head %}
+<style>
+  /* page-specific styling layered over the global theme */
+  .lot-subtitle{ color:var(--muted); margin-top:2px }
+  .legend{
+    display:flex; gap:.6rem; flex-wrap:wrap;
+    margin:14px 0 18px; padding:10px 12px;
+    background:rgba(255,255,255,.03);
+    border:1px solid var(--border); border-radius:12px;
+  }
+  .legend-item{
+    display:inline-flex; align-items:center; gap:.45rem;
+    padding:.25rem .6rem; border-radius:999px;
+    font-size:.82rem; font-weight:800; color:#dbe4ff;
+    border:1px solid rgba(255,255,255,.12);
+  }
+  .legend-empty{ background:#0b1220 }
+  .legend-reserved{ background:rgba(234,179,8,.15); color:#fde68a; border-color:rgba(234,179,8,.35) }
+  .legend-parked{ background:rgba(34,197,94,.18); color:#bbf7d0; border-color:rgba(34,197,94,.4) }
+
+  .slots-grid{
+    display:grid; gap:14px;
+    grid-template-columns: repeat( auto-fill, minmax(240px, 1fr) );
+  }
+  .slot-box{
+    position:relative;
+    background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+    border:1px solid var(--border);
+    border-radius: var(--radius);
+    padding:14px 14px 12px;
+    box-shadow: var(--shadow);
+    overflow:hidden;
+    transition: transform .12s ease, box-shadow .2s ease, border-color .2s ease;
+  }
+  .slot-box:hover{
+    transform: translateY(-2px);
+    border-color: rgba(59,130,246,.35);
+    box-shadow: 0 10px 32px rgba(0,0,0,.45), 0 0 0 4px var(--ring);
+  }
+  /* subtle state tint */
+  .slot-empty{ background: linear-gradient(180deg, rgba(51,65,85,.22), rgba(2,6,23,.35)); }
+  .slot-reserved{ background: linear-gradient(180deg, rgba(250,204,21,.12), rgba(120,53,15,.15)); }
+  .slot-parked{ background: linear-gradient(180deg, rgba(34,197,94,.14), rgba(6,78,59,.18)); }
+
+  .slot-number{
+    display:flex; align-items:center; gap:.5rem;
+    font-weight:800; font-size:1.05rem; color:#fff; letter-spacing:.2px;
+  }
+  .slot-number i{ color:var(--primary) }
+
+  .slot-status{
+    margin-top:6px; color:#cbd5e1; font-size:.93rem; display:flex; align-items:center; gap:.5rem; flex-wrap:wrap;
+  }
+  .badge{
+    padding:.15rem .5rem; border-radius:999px; font-size:.74rem; font-weight:800;
+    border:1px solid rgba(255,255,255,.15);
+  }
+  .badge-empty{ background:#0b1220 }
+  .badge-reserved{ background:rgba(234,179,8,.15); color:#fde68a; border-color:rgba(234,179,8,.4) }
+  .badge-parked{ background:rgba(34,197,94,.18); color:#bbf7d0; border-color:rgba(34,197,94,.45) }
+.reserve{
+  background-color: #1f2937;
+  border: 1px solid #9dbfff;
+  text-align: left;
+}
+  .slot-actions{ margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;justify-content: flex-end; }
+  .btn i{ font-size:1.05rem }
+  .btn-secondary{ background: linear-gradient(180deg, #1f2937, #0f172a); color:#e5e7eb; border:1px solid var(--border) }
+
+  /* modal uses global .modal scaffold; add helpers */
+  .modal.hidden{ display:none }
+  .modal__dialog{
+    width:min(520px, 96vw);
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.63), rgba(0, 0, 0, 0.548));
+    border:1px solid rgb(66, 66, 66); border-radius:16px; overflow:hidden; box-shadow: var(--shadow);
+  }
+  .modal__header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 16px; background: rgba(37,99,235,.12); border-bottom:1px solid var(--border);
+  }
+  .modal__header h3{ margin:0; font-size:1.05rem; font-weight:800 }
+  .modal__close{ appearance:none; border:0; background:transparent; color:#cfd7ea; font-size:1.4rem; cursor:pointer }
+  .modal__close:hover{ color:#fff }
+  .modal__body{ padding:16px; display:grid; gap:8px }
+  .modal__footer{ padding:14px 16px; display:flex; justify-content:flex-end; gap:8px; border-top:1px solid var(--border) }
+  .modal__body input{
+    background:#101827; color:#fff; border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:.8rem .9rem;
+  }
+  .modal__body input:focus{ border-color:#5b8efb; box-shadow:0 0 0 4px var(--ring) }
+.rescan{
+  background-color: #1d864199;
+  border: 1px solid green;
+}
+  @media (max-width:720px){
+    .slots-grid{ grid-template-columns: 1fr 1fr; }
+    .slot-actions .btn{ flex:1 1 auto; justify-content:center }
+  }
+  @media (max-width:520px){
+    .slots-grid{ grid-template-columns: 1fr; }
+  }
+</style>
+{% endblock %}
+
+{% block breadcrumb %}
+  <a href="{{ url_for('views.home') }}"><i class="ri-home-4-line"></i> Home</a>
+  <span class="sep">›</span> <a href="{{ url_for('views.user_parking_list') }}">Parking</a>
+  <span class="sep">›</span> {{ lot.name }}
+{% endblock %}
+
+{% block content %}
+<h1>{{ lot.name }}</h1>
+<p class="lot-subtitle"><i class="ri-map-pin-2-line"></i> Lat/Lng: {{ '%.5f'|format(lot.latitude) }}, {{ '%.5f'|format(lot.longitude) }}</p>
+
+<div class="legend">
+  <span class="legend-item legend-empty"><i class="ri-checkbox-blank-circle-line"></i> Empty</span>
+  <span class="legend-item legend-reserved"><i class="ri-time-line"></i> Reserved</span>
+  <span class="legend-item legend-parked"><i class="ri-car-fill"></i> Parked</span>
+</div>
+
+<!-- Reserve Modal -->
+<div id="reserveModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="reserveTitle">
+  <div class="modal__dialog">
+    <div class="modal__header">
+      <h3 id="reserveTitle"><i class="ri-timer-line"></i> Reserve Slot <span id="slotNumTitle"></span></h3>
+      <button class="modal__close" onclick="closeReserveModal()" aria-label="Close">&times;</button>
+    </div>
+    <div class="modal__body">
+      <label for="carInputModal"><strong>Vehicle number</strong></label>
+      <input id="carInputModal" type="text" placeholder="e.g., KA01AB1234" />
+      <small class="muted">Reservation will be held for 15 minutes.</small>
+    </div>
+    <div class="modal__footer">
+      <button class="btn btn-secondary" onclick="closeReserveModal()"><i class="ri-close-circle-line"></i> Cancel</button>
+      <button class="btn rescan" onclick="confirmReserve()"><i class="ri-timer-line"></i> Reserve</button>
+    </div>
+  </div>
+</div>
+
+<div class="slots-grid">
+  {% for s in slots %}
+    <div class="slot-box
+         {% if s.status == 'parked' %}slot-parked
+         {% elif s.status == 'reserved' %}slot-reserved
+         {% else %}slot-empty{% endif %}">
+      <div class="slot-number">
+        <i class="ri-parking-box-line"></i> #{{ s.number }}
+      </div>
+
+      <div class="slot-status">
+        {% if s.status == 'empty' %}
+          <span class="badge badge-empty"><i class="ri-checkbox-blank-circle-line"></i> Empty</span>
+        {% elif s.status == 'reserved' %}
+          <span class="badge badge-reserved"><i class="ri-time-line"></i> Reserved</span>
+        {% else %}
+          <span class="badge badge-parked"><i class="ri-car-fill"></i> Parked</span>
+        {% endif %}
+        {% if s.car_number %} • <i class="ri-drive-line"></i> {{ s.car_number }}{% endif %}
+      </div>
+
+      <div class="slot-actions">
+        {% if s.status == 'empty' %}
+          <button class="btn reserve" onclick="openReserveModal({{ s.id }}, {{ s.number }})">
+            <i class="ri-timer-line"></i> Reserve 15m
+          </button>
+          {# <button class="btn" onclick="checkin({{ s.id }})"><i class="ri-login-circle-line"></i> Park now</button> #}
+        {% elif s.status == 'reserved' %}
+          {# <button class="btn" onclick="checkin({{ s.id }})"><i class="ri-login-circle-line"></i> Check-in</button> #}
+          <button class="btn btn-secondary" onclick="cancelRes({{ s.id }})">
+            <i class="ri-close-circle-line"></i> Cancel
+          </button>
+        {% elif s.status == 'parked' %}
+          <em><i class="ri-information-line"></i> Parked</em>
+        {% endif %}
+      </div>
+    </div>
+  {% endfor %}
+</div>
+
+<script>
+let selectedSlotId = null;
+let selectedSlotNumber = null;
+
+function openReserveModal(slotId, slotNumber) {
+  selectedSlotId = slotId;
+  selectedSlotNumber = slotNumber;
+  document.getElementById('slotNumTitle').textContent = `#${slotNumber}`;
+  document.getElementById('carInputModal').value = '';
+  document.getElementById('reserveModal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('carInputModal').focus(), 0);
+}
+function closeReserveModal() {
+  document.getElementById('reserveModal').classList.add('hidden');
+}
+
+async function postJSON(url, payload) {
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'fetch' },
+    body: JSON.stringify(payload || {})
+  });
+  let data = {};
+  try { data = await r.json(); } catch {}
+  if (!r.ok || data.ok === false) {
+    throw new Error((data && data.msg) || `HTTP ${r.status}`);
+  }
+  return data;
+}
+function reloadSoon() { setTimeout(() => location.reload(), 300); }
+
+async function confirmReserve() {
+  const car = (document.getElementById('carInputModal').value || '').trim().toUpperCase();
+  if (!car) { alert('Please enter vehicle number.'); return; }
+  try {
+    await postJSON(`/api/slot/${selectedSlotId}/reserve`, { car_number: car });
+    closeReserveModal();
+    reloadSoon();
+  } catch(e) { alert(e.message); }
+}
+
+async function cancelRes(id) {
+  try { await postJSON(`/api/slot/${id}/cancel`); reloadSoon(); }
+  catch(e){ alert(e.message); }
+}
+
+async function checkin(id) {
+  let car = prompt('Enter vehicle number (leave blank if already reserved):') || '';
+  car = car.trim().toUpperCase();
+  try { await postJSON(`/api/slot/${id}/checkin`, { car_number: car }); reloadSoon(); }
+  catch(e){ alert(e.message); }
+}
+
+/* close modal via Esc / outside click */
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeReserveModal(); });
+document.getElementById('reserveModal').addEventListener('click', (e) => {
+  if (e.target.id === 'reserveModal') closeReserveModal();
+});
+</script>
+{% endblock %}
